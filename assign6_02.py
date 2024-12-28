@@ -11,47 +11,64 @@ from torchsummary import summary
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
-        
-        # First block
-        self.conv1 = nn.Conv2d(1, 10, kernel_size=3, padding=1)
-        self.bn1 = nn.BatchNorm2d(10)
-        self.conv2 = nn.Conv2d(10, 16, kernel_size=3, padding=1)
+
+        self.conv1 = nn.Conv2d(in_channels=1, out_channels=8, kernel_size=3, padding=1)
+        self.bn1 = nn.BatchNorm2d(8)  # Stabilize learning
+        self.conv2 = nn.Conv2d(in_channels=8, out_channels=16, kernel_size=3, padding=1)
         self.bn2 = nn.BatchNorm2d(16)
-        self.conv3 = nn.Conv2d(16, 16, kernel_size=3, padding=1)
+        self.conv3 = nn.Conv2d(in_channels=16, out_channels=16, kernel_size=3, padding=1,stride=2)
         self.bn3 = nn.BatchNorm2d(16)
-        
-        self.pool = nn.MaxPool2d(2, 2)
-        # Second block
-        self.conv4 = nn.Conv2d(16, 16, kernel_size=3, padding=1)
-        self.bn4 = nn.BatchNorm2d(16)
-        self.conv5 = nn.Conv2d(16, 16, kernel_size=3, padding=1)
+
+        self.pool1 = nn.MaxPool2d(kernel_size=2, stride=2)  # First spatial reduction
+
+        self.conv4 = nn.Conv2d(in_channels=16, out_channels=16, kernel_size=3, padding=1)
+        self.bn4 = nn.BatchNorm2d(16) 
+        self.conv5 = nn.Conv2d(in_channels=16, out_channels=16, kernel_size=3, padding=1)
         self.bn5 = nn.BatchNorm2d(16)
-        
-        # Final block
-        self.conv6 = nn.Conv2d(16, 10, kernel_size=1)  # 1x1 conv to reduce channels
-        
-        
-        self.gap = nn.AdaptiveAvgPool2d(1)
-        self.dropout = nn.Dropout(0.25)
+        self.conv6 = nn.Conv2d(in_channels=16, out_channels=10, kernel_size=3, padding=1,stride=2)
+        self.bn6 = nn.BatchNorm2d(10)
+
+        self.pool2 = nn.MaxPool2d(kernel_size=2, stride=2)  # Second spatial reduction
+
+        self.conv7 = nn.Conv2d(in_channels=10, out_channels=10, kernel_size=3, padding=1)
+        self.bn7 = nn.BatchNorm2d(10)
+        self.conv8 = nn.Conv2d(in_channels=10, out_channels=10, kernel_size=3, padding=1)
+        self.bn8 = nn.BatchNorm2d(10)
+
+        self.gap = nn.AvgPool2d(kernel_size=2)  # Global average pooling
+        self.conv9 = nn.Conv2d(in_channels=10, out_channels=10, kernel_size=1, padding=0)
+
+        self.dropout = nn.Dropout(0.20)  # Light regularization
+        self.dropout1 = nn.Dropout(0.01)
+        self.dropout2 = nn.Dropout(0.01)
+        self.dropout3 = nn.Dropout(0.01)
+        self.dropout4 = nn.Dropout(0.01)
+        self.dropout5 = nn.Dropout(0.05)
+        self.dropout6 = nn.Dropout(0.01)
+        self.dropout7 = nn.Dropout(0.01)
+        self.dropout8 = nn.Dropout(0.01)
 
     def forward(self, x):
-        # First block
-        x = self.pool(F.relu(self.bn3(self.conv3(
-            F.relu(self.bn2(self.conv2(
-            F.relu(self.bn1(self.conv1(x))))))))))
-        x = self.pool(x)
+        x = self.dropout1(F.relu(self.bn1(self.conv1(x))))
+        x = self.dropout2(F.relu(self.bn2(self.conv2(x))))
+        x = self.dropout3(F.relu(self.bn3(self.conv3(x))))
+        x = self.pool1(x)
         x = self.dropout(x)
-        
-        # Second block
-        F.relu(self.bn5(self.conv5(
-            F.relu(self.bn4(self.conv4(x))))))
-        x = self.dropout(x)
-        
-        # Final block
-        x = self.conv6(x)
+        x = self.dropout4(F.relu(self.bn4(self.conv4(x))))
+        x = self.dropout5(F.relu(self.bn5(self.conv5(x))))
+        x = self.dropout6(F.relu(self.bn6(self.conv6(x))))
+        x = self.pool2(x)
+        x = self.dropout8(x)
+        x = F.relu(self.bn7(self.conv7(x)))
+        x = F.relu(self.bn8(self.conv8(x)))
         x = self.gap(x)
-        x = x.view(-1, 10)
-        return F.log_softmax(x, dim=1)
+        x = self.conv9(x)
+
+        #print(x.shape)
+        
+        x = x.view(x.size(0), -1)
+        
+        return F.log_softmax(x, dim=-1)
 
 
 
@@ -59,46 +76,6 @@ use_cuda = torch.cuda.is_available()
 device = torch.device("cuda" if use_cuda else "cpu")
 model = Net().to(device)
 summary(model, input_size=(1, 28, 28))
-calculate_receptive_field()
-
-# Calculate and print receptive field for each layer
-def calculate_receptive_field():
-    rf = 1  # Initial receptive field
-    stride = 1  # Cumulative stride
-    print("\nReceptive Field Analysis:")
-    print("Layer\t\tRF\tStride\tOutput Size")
-    print("-" * 50)
-    
-    # First block
-    rf = rf + 2 * (3-1)  # conv1 (3x3)
-    print("conv1\t\t{}x{}\t{}\t28x28".format(rf, rf, stride))
-    
-    rf = rf + 2 * (3-1)  # conv2 (3x3)
-    print("conv2\t\t{}x{}\t{}\t28x28".format(rf, rf, stride))
-    
-    rf = rf + 2 * (3-1)  # conv3 (3x3)
-    print("conv3\t\t{}x{}\t{}\t28x28".format(rf, rf, stride))
-    
-    rf, stride = rf * 2, stride * 2  # First pool
-    print("pool1\t\t{}x{}\t{}\t14x14".format(rf, rf, stride))
-    
-    rf, stride = rf * 2, stride * 2  # Second pool
-    print("pool2\t\t{}x{}\t{}\t7x7".format(rf, rf, stride))
-    
-    rf = rf + 2 * (3-1) * stride  # conv4 (3x3)
-    print("conv4\t\t{}x{}\t{}\t7x7".format(rf, rf, stride))
-    
-    rf = rf + 2 * (3-1) * stride  # conv5 (3x3)
-    print("conv5\t\t{}x{}\t{}\t7x7".format(rf, rf, stride))
-    
-    rf = rf + 2 * (1-1) * stride  # conv6 (1x1)
-    print("conv6\t\t{}x{}\t{}\t7x7".format(rf, rf, stride))
-    
-    print("\nFinal receptive field: {}x{}".format(rf, rf))
-
-# Place this right after the model summary
-print("\nReceptive Field Analysis:")
-calculate_receptive_field()
 
 
 torch.manual_seed(1)
@@ -108,8 +85,10 @@ batch_size = 128
 kwargs = {'num_workers': 4, 'pin_memory': True} if use_cuda else {}
 dataset = datasets.MNIST('../data', train=True, download=True,
                    transform=transforms.Compose([
-                       transforms.RandomAffine(degrees=10, translate=(0.1, 0.1), 
-                                            scale=(0.85, 1.15), shear=(-10, 10)),
+                       transforms.Resize((28, 28)),
+                       #transforms.RandomRotation((-20.0, 20.0),fill=(1,)),
+                       transforms.RandomAffine(degrees=20, translate=(0.1, 0.1), scale=(0.9, 1.1)),
+                       #transforms.ColorJitter(brightness=0.2, contrast=0.2),
                        transforms.ToTensor(),
                        transforms.Normalize((0.1307,), (0.3081,))
                    ]))
@@ -179,17 +158,19 @@ def test(model, device, test_loader):
     return accuracy
 
 model = Net().to(device)
-optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9, weight_decay=5e-4)
+#optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9, weight_decay=5e-4)
+optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
 #optimizer = optim.Adam(model.parameters(), lr=0.001)
 scheduler = optim.lr_scheduler.OneCycleLR(
-    optimizer,
-    max_lr=0.1,
-    epochs=20,
-    steps_per_epoch=len(train_loader),
-    pct_start=0.2,
-    div_factor=25,
-    final_div_factor=1000,
-)
+        optimizer,
+        max_lr=0.1,
+        epochs=20,
+        steps_per_epoch=len(train_loader),
+        pct_start=0.3,
+        div_factor=10,
+        final_div_factor=100,
+        anneal_strategy='cos'
+    )
 accuracy = 0.0
 
 for epoch in range(1, 20):
