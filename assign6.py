@@ -37,19 +37,19 @@ class Net(nn.Module):
         self.dropout = nn.Dropout(0.05)  # Light regularization
         self.dropout1 = nn.Dropout(0.06)
         self.dropout2 = nn.Dropout(0.06)
-        self.dropout3 = nn.Dropout(0.06)
+        self.dropout3 = nn.Dropout(0.001)
         self.dropout4 = nn.Dropout(0.05)
         self.dropout5 = nn.Dropout(0.05)
         self.dropout6 = nn.Dropout(0.05)
         self.dropout7 = nn.Dropout(0.05)
-        self.dropout8 = nn.Dropout(0.05)
+        self.dropout8 = nn.Dropout(0.005)
 
     def forward(self, x):
         x = self.dropout1(F.relu(self.bn1(self.conv1(x))))
         x = self.dropout2(F.relu(self.bn2(self.conv2(x))))
-        x = self.dropout3(F.relu(self.bn3(self.conv3(x))))
+        x = self.conv3(x)
         x = self.pool1(x)
-        #x = self.dropout(x)
+        x = self.dropout(x)
         x = self.dropout4(F.relu(self.bn4(self.conv4(x))))
         x = self.dropout5(F.relu(self.bn5(self.conv5(x))))
         x = self.dropout6(F.relu(self.bn6(self.conv6(x))))
