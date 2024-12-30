@@ -22,3 +22,74 @@ jobs:
     - name: Run training
       run: |
         python assign6.py 
+
+    - name: Check Parameter Count
+      run: |
+        echo "Checking total parameter count..."
+        python -c "
+        from model.network import Net
+        import torch
+        
+        model = Net()
+        total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+        print(f'Total trainable parameters: {total_params:,}')
+        assert total_params < 20000, f'Model has {total_params:,} parameters, exceeding limit of 20,000'
+        "
+        
+    - name: Check Architecture Requirements
+      run: |
+        echo "Checking model architecture requirements..."
+        python -c "
+        from model.network import Net
+        import torch
+        import torch.nn as nn
+        
+        model = Net()
+        
+        # Check for Batch Normalization
+        has_bn = any(isinstance(m, nn.BatchNorm2d) for m in model.modules())
+        assert has_bn, 'Model must use Batch Normalization'
+        
+        # Check for Dropout
+        has_dropout = any(isinstance(m, nn.Dropout) for m in model.modules())
+        assert has_dropout, 'Model must use Dropout'
+        
+        # Check for GAP (no large FC layers)
+        has_gap = any(isinstance(m, nn.AdaptiveAvgPool2d) for m in model.modules())
+        assert has_gap, 'Model must use Global Average Pooling'
+        
+        # Verify FC layer sizes
+        fc_layers = [m for m in model.modules() if isinstance(m, nn.Linear)]
+        for fc in fc_layers:
+            assert fc.in_features <= 128, f'FC layer input {fc.in_features} too large. Should use GAP'
+        
+        print('✓ Model uses Batch Normalization')
+        print('✓ Model uses Dropout')
+        print('✓ Model uses Global Average Pooling')
+        print('✓ No large FC layers found')
+        "
+        
+    - name: Check Forward Pass
+      run: |
+        echo "Verifying forward pass..."
+        python -c "
+        from model.network import Net
+        import torch
+        
+        model = Net()
+        batch = torch.randn(1, 1, 28, 28)
+        output = model(batch)
+        
+        assert output.shape == (1, 10), f'Expected output shape (1, 10), got {output.shape}'
+        print('✓ Forward pass successful with correct output shape')
+        "
+        
+    - name: Summary
+      run: |
+        echo "=== Architecture Verification Summary ==="
+        echo "✓ Parameter count under 20,000"
+        echo "✓ Uses Batch Normalization"
+        echo "✓ Uses Dropout"
+        echo "✓ Uses Global Average Pooling"
+        echo "✓ Forward pass verified"
+        echo "All checks passed successfully!" 
