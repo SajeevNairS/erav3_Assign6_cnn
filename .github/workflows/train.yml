@@ -28,11 +28,9 @@ jobs:
         echo "Checking total parameter count..."
         python3 -c "
         from assign6 import create_model
-        import torch
-        
         model = create_model()
         total_params = sum(p.numel() for p in model.parameters())
-        print(f'Total parameters: {total_params:,}')
+        print(f'Total parameters: {total_params}')
         assert total_params < 20000, f'Model has {total_params:,} parameters, exceeding limit of 20,000'
         "
     
@@ -41,34 +39,30 @@ jobs:
         echo "Checking model architecture requirements..."
         python3 -c "
         from assign6 import create_model
-        import torch
         import torch.nn as nn
         
         model = create_model()
         
-        # 1. Check for Batch Normalization
+        # Check for Batch Normalization
         has_bn = any(isinstance(m, nn.BatchNorm2d) for m in model.modules())
         assert has_bn, 'Model must use Batch Normalization'
-        print('✓ Model uses Batch Normalization')
         
-        # 2. Check for Dropout
+        # Check for Dropout
         has_dropout = any(isinstance(m, nn.Dropout) for m in model.modules())
         assert has_dropout, 'Model must use Dropout'
-        print('✓ Model uses Dropout')
         
-        # 3. Check for GAP or small FC layers
+        # Check for GAP or small FC layers
         has_gap = any(isinstance(m, nn.AdaptiveAvgPool2d) for m in model.modules())
         fc_layers = [m for m in model.modules() if isinstance(m, nn.Linear)]
         
-        if has_gap:
-            print('✓ Model uses Global Average Pooling')
-        else:
-            # If no GAP, verify FC layers are small
+        if not has_gap:
+            # If no GAP, ensure FC layers are reasonable size
             for fc in fc_layers:
                 assert fc.in_features <= 128, f'FC layer input {fc.in_features} too large. Should use GAP or smaller FC layers'
-            print('✓ Model uses appropriate FC layer sizes')
+        
+        print('✓ Architecture validation passed')
         "
-
+        
     - name: Check Forward Pass
       run: |
         echo "Verifying forward pass..."
