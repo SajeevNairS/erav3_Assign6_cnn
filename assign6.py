@@ -47,7 +47,7 @@ class Net(nn.Module):
     def forward(self, x):
         x = self.dropout1(F.relu(self.bn1(self.conv1(x))))
         x = self.dropout2(F.relu(self.bn2(self.conv2(x))))
-        x = self.dropout3(F.relu(self.bn3(self.conv3(x))))
+        x = self.conv3(x)
         x = self.pool1(x)
         #x = self.dropout(x)
         x = self.dropout4(F.relu(self.bn4(self.conv4(x))))

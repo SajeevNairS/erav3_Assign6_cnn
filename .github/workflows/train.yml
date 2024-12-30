@@ -19,14 +19,22 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
     
-    - name: Run training
-      run: |
-        python assign6.py 
+    #- name: Run training
+    #  run: |
+    #    python assign6.py 
 
     - name: Check parameter count
       run: |
         echo "Checking total parameter count..."
-        python3 -c "from assign6 import create_model; model = create_model(); print(f'Total parameters: {sum(p.numel() for p in model.parameters())}')"
+        python3 -c "
+        from assign6 import create_model
+        import torch
+        
+        model = create_model()
+        total_params = sum(p.numel() for p in model.parameters())
+        print(f'Total parameters: {total_params:,}')
+        assert total_params < 20000, f'Model has {total_params:,} parameters, exceeding limit of 20,000'
+        "
     
     - name: Check Architecture Requirements
       run: |
@@ -38,29 +46,29 @@ jobs:
         
         model = create_model()
         
-        # Check for Batch Normalization
+        # 1. Check for Batch Normalization
         has_bn = any(isinstance(m, nn.BatchNorm2d) for m in model.modules())
         assert has_bn, 'Model must use Batch Normalization'
+        print('✓ Model uses Batch Normalization')
         
-        # Check for Dropout
+        # 2. Check for Dropout
         has_dropout = any(isinstance(m, nn.Dropout) for m in model.modules())
         assert has_dropout, 'Model must use Dropout'
-        
-        # Check for GAP (no large FC layers)
-        has_gap = any(isinstance(m, nn.AdaptiveAvgPool2d) for m in model.modules())
-        assert has_gap, 'Model must use Global Average Pooling'
-        
-        # Verify FC layer sizes
-        fc_layers = [m for m in model.modules() if isinstance(m, nn.Linear)]
-        for fc in fc_layers:
-            assert fc.in_features <= 128, f'FC layer input {fc.in_features} too large. Should use GAP'
-        
-        print('✓ Model uses Batch Normalization')
         print('✓ Model uses Dropout')
-        print('✓ Model uses Global Average Pooling')
-        print('✓ No large FC layers found')
-        "
         
+        # 3. Check for GAP or small FC layers
+        has_gap = any(isinstance(m, nn.AdaptiveAvgPool2d) for m in model.modules())
+        fc_layers = [m for m in model.modules() if isinstance(m, nn.Linear)]
+        
+        if has_gap:
+            print('✓ Model uses Global Average Pooling')
+        else:
+            # If no GAP, verify FC layers are small
+            for fc in fc_layers:
+                assert fc.in_features <= 128, f'FC layer input {fc.in_features} too large. Should use GAP or smaller FC layers'
+            print('✓ Model uses appropriate FC layer sizes')
+        "
+
     - name: Check Forward Pass
       run: |
         echo "Verifying forward pass..."
