@@ -17,42 +17,78 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install torch torchvision
-    
-    - name: Validate Model Architecture
+        pip install torch torchvision tqdm matplotlib numpy
+
+    - name: Check Parameter Count
       run: |
-        echo "Validating model architecture..."
+        echo "Checking total parameter count..."
         python3 -c "
+        import sys, os
+        sys.path.append(os.getcwd())
         from assign6 import create_model
-        import torch.nn as nn
         
-        # Create model
         model = create_model()
-        
-        # Check parameter count
         total_params = sum(p.numel() for p in model.parameters())
         print(f'Total parameters: {total_params}')
         assert total_params < 20000, f'Model has {total_params:,} parameters, exceeding limit of 20,000'
+        "
+
+    - name: Check Batch Normalization
+      run: |
+        echo "Checking for Batch Normalization layers..."
+        python3 -c "
+        import sys, os
+        sys.path.append(os.getcwd())
+        from assign6 import create_model
+        import torch.nn as nn
         
-        # Check for Batch Normalization
+        model = create_model()
         has_bn = any(isinstance(m, nn.BatchNorm2d) for m in model.modules())
         assert has_bn, 'Model must use Batch Normalization'
+        print('✓ Model uses Batch Normalization')
+        "
+
+    - name: Check Dropout
+      run: |
+        echo "Checking for Dropout layers..."
+        python3 -c "
+        import sys, os
+        sys.path.append(os.getcwd())
+        from assign6 import create_model
+        import torch.nn as nn
         
-        # Check for Dropout
+        model = create_model()
         has_dropout = any(isinstance(m, nn.Dropout) for m in model.modules())
         assert has_dropout, 'Model must use Dropout'
+        print('✓ Model uses Dropout')
+        "
+
+    - name: Check GAP/FC Layers
+      run: |
+        echo "Checking for GAP or appropriate FC layers..."
+        python3 -c "
+        import sys, os
+        sys.path.append(os.getcwd())
+        from assign6 import create_model
+        import torch.nn as nn
         
-        # Check for GAP or small FC layers
+        model = create_model()
         has_gap = any(isinstance(m, nn.AdaptiveAvgPool2d) for m in model.modules())
         fc_layers = [m for m in model.modules() if isinstance(m, nn.Linear)]
         
         if not has_gap:
-            # If no GAP, ensure FC layers are reasonable size
             for fc in fc_layers:
                 assert fc.in_features <= 128, f'FC layer input {fc.in_features} too large. Should use GAP or smaller FC layers'
-        
-        print('✓ Parameter count:', total_params)
-        print('✓ Uses Batch Normalization')
-        print('✓ Uses Dropout')
-        print('✓ Architecture requirements satisfied')
-        " 
+            print('✓ Model uses appropriate FC layers')
+        else:
+            print('✓ Model uses Global Average Pooling')
+        "
+
+    - name: Summary
+      run: |
+        echo "=== Architecture Validation Summary ==="
+        echo "✓ Parameter count under 20,000"
+        echo "✓ Batch Normalization implemented"
+        echo "✓ Dropout implemented"
+        echo "✓ Architecture requirements satisfied"
+        echo "All checks passed successfully!" 
