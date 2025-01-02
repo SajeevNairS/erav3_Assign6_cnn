@@ -7,62 +7,7 @@ from torchvision import datasets, transforms
 from tqdm import tqdm
 from itertools import accumulate
 from torchsummary import summary
-
-class Net(nn.Module):
-    def __init__(self):
-        super(Net, self).__init__()
-
-        self.conv1 = nn.Conv2d(in_channels=1, out_channels=16, kernel_size=3, padding=0)
-        self.bn1 = nn.BatchNorm2d(16)  # Stabilize learning
-        self.conv2 = nn.Conv2d(in_channels=16, out_channels=32, kernel_size=3, padding=0)
-        self.bn2 = nn.BatchNorm2d(32)
-        self.conv3 = nn.Conv2d(in_channels=32, out_channels=10, kernel_size=1, padding=0)
-        self.bn3 = nn.BatchNorm2d(10)
-        
-        self.pool1 = nn.MaxPool2d(kernel_size=2, stride=2)  # First spatial reduction
-
-        self.conv4 = nn.Conv2d(in_channels=10, out_channels=16, kernel_size=3, padding=0)
-        self.bn4 = nn.BatchNorm2d(16) 
-        self.conv5 = nn.Conv2d(in_channels=16, out_channels=16, kernel_size=3, padding=0)
-        self.bn5 = nn.BatchNorm2d(16)
-        self.conv6 = nn.Conv2d(in_channels=16, out_channels=16, kernel_size=3, padding=0)
-        self.bn6 = nn.BatchNorm2d(16)
-        self.conv7 = nn.Conv2d(in_channels=16, out_channels=16, kernel_size=3, padding=1)
-        self.bn7 = nn.BatchNorm2d(16)
-        
-        #self.gap = nn.AvgPool2d(kernel_size=3)  # Global average pooling
-        self.gap = nn.AvgPool2d(kernel_size=6)
-        self.conv8 = nn.Conv2d(in_channels=16, out_channels=10, kernel_size=1, padding=0)
-
-        self.dropout = nn.Dropout(0.05)  # Light regularization
-        self.dropout1 = nn.Dropout(0.07)
-        self.dropout2 = nn.Dropout(0.07)
-        self.dropout3 = nn.Dropout(0.01)
-        self.dropout4 = nn.Dropout(0.05)
-        self.dropout5 = nn.Dropout(0.05)
-        self.dropout6 = nn.Dropout(0.05)
-        self.dropout7 = nn.Dropout(0.01)
-        self.dropout8 = nn.Dropout(0.005)
-
-    def forward(self, x):
-        x = self.dropout1(F.relu(self.bn1(self.conv1(x))))
-        x = self.dropout2(F.relu(self.bn2(self.conv2(x))))
-        x = self.conv3(x)
-        x = self.pool1(x)
-        #x = self.dropout(x)
-        x = self.dropout4(F.relu(self.bn4(self.conv4(x))))
-        x = self.dropout5(F.relu(self.bn5(self.conv5(x))))
-        x = self.dropout6(F.relu(self.bn6(self.conv6(x))))
-        x = self.dropout7(F.relu(self.bn7(self.conv7(x))))
-        
-        x = self.gap(x)
-        x = self.conv8(x)
-
-        #print(x.shape)
-        
-        x = x.view(x.size(0), -1)
-        
-        return F.log_softmax(x, dim=-1)
+from model import create_model  # Import the model from the new file
 
 def get_device():
     if torch.backends.mps.is_available():
@@ -124,7 +69,7 @@ device = get_device()
 print(f"Using device: {device}")
 
 # Create model and move to device
-model = Net().to(device)
+model = create_model().to(device)
 print_model_summary(model)
 
 # Update kwargs based on device
@@ -214,7 +159,7 @@ def test(model, device, test_loader):
         float(100. * (correct / len(test_loader.dataset)))))
     return accuracy
 
-model = Net().to(device)
+model = create_model().to(device)
 if device.type != "mps" :
     summary(model, input_size=(1, 28, 28))
 
@@ -252,3 +197,12 @@ for epoch in range(1, 20):
         print("Accuracy is greater than 99.4 and reached at epoch", epoch)
 
 print(f"{finalprint}")
+
+def main():
+    # Your main training/testing loop
+    model = create_model()  # Use the imported create_model function
+    # Rest of your code remains the same
+    pass
+
+if __name__ == '__main__':
+    main()

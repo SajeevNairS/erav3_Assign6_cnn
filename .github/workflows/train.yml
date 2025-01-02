@@ -21,15 +21,13 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install torch torchvision tqdm matplotlib numpy torchsummary
+        pip install torch torchvision
         
     - name: Check Parameter Count
       run: |
         echo "Checking total parameter count..."
         python -c "
-        import sys, os
-        sys.path.append(os.getcwd())
-        from assign6 import create_model
+        from model import create_model
         
         model = create_model()
         total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -41,9 +39,7 @@ jobs:
       run: |
         echo "Checking model architecture requirements..."
         python -c "
-        import sys, os
-        sys.path.append(os.getcwd())
-        from assign6 import create_model
+        from model import create_model
         import torch.nn as nn
         
         model = create_model()
@@ -51,33 +47,30 @@ jobs:
         # Check for Batch Normalization
         has_bn = any(isinstance(m, nn.BatchNorm2d) for m in model.modules())
         assert has_bn, 'Model must use Batch Normalization'
+        print('✓ Model uses Batch Normalization')
         
         # Check for Dropout
         has_dropout = any(isinstance(m, nn.Dropout) for m in model.modules())
         assert has_dropout, 'Model must use Dropout'
+        print('✓ Model uses Dropout')
         
-        # Check for GAP (no large FC layers)
+        # Check for GAP
         has_gap = any(isinstance(m, nn.AdaptiveAvgPool2d) for m in model.modules())
-        assert has_gap, 'Model must use Global Average Pooling'
+        assert has_gap, 'Model must use Global Average Pooling (AdaptiveAvgPool2d)'
+        print('✓ Model uses Global Average Pooling')
         
-        # Verify FC layer sizes
+        # Verify FC layer sizes (if any)
         fc_layers = [m for m in model.modules() if isinstance(m, nn.Linear)]
         for fc in fc_layers:
             assert fc.in_features <= 128, f'FC layer input {fc.in_features} too large. Should use GAP'
-        
-        print('✓ Model uses Batch Normalization')
-        print('✓ Model uses Dropout')
-        print('✓ Model uses Global Average Pooling')
-        print('✓ No large FC layers found')
+        print('✓ Architecture requirements satisfied')
         "
         
     - name: Check Forward Pass
       run: |
         echo "Verifying forward pass..."
         python -c "
-        import sys, os
-        sys.path.append(os.getcwd())
-        from assign6 import create_model
+        from model import create_model
         import torch
         
         model = create_model()
